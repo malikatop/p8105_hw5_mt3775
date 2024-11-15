@@ -42,12 +42,13 @@ If we increase n to 100, then we would definitely have reached 1 by that point.
 ## Problem 2
 
 ```{r}
+# Function to get the p-value and estimate for 
 sim_power = function(mu) {
   sim_data = 
     tibble(
-      x = rnorm(n=30, mean = mu, sd=5),
-    )
-  test_output = t.test(sim_data$x) |>  
+      x = rnorm(n=30, mean = mu, sd=5), # draw 30 samples from normal distribution w/  
+    )                                   # some mean mu and sd = 5
+  test_output = t.test(sim_data$x) |>  # conduct a t-test across all samples to see if mu is diff from 0
     broom::tidy() |> 
     select(p.value, estimate)
   return(test_output)
@@ -55,21 +56,22 @@ sim_power = function(mu) {
 
 sim_res =
   expand_grid(
-    iter = 1:5000,
-    mu = c(0:6)
+    iter = 1:5000, # 5000 iterations of drawing 30 samples
+    mu = c(0:6)    # for 6 diff. values of mu
   ) |> 
-  mutate(power_res = map(mu, \(x) sim_power(x))) |> 
+  mutate(power_res = map(mu, \(x) sim_power(x))) |> # conduct t-test for all values of mu 
   unnest(power_res)
 
 sim_res |> 
   group_by(mu) |> 
-  summarise(power = mean(p.value < 0.05)) |> 
+  summarise(power = mean(p.value < 0.05)) |> # power is the prop. of times we rejected the null
   ggplot(aes(x = mu, y = power)) +
   geom_point()
 
 ```
 
-As the true value of $\mu$ increases (i.e. the effect size), the power increases. 
+As the true value of $\mu$ increases (i.e. the effect size), the power increases. This
+makes sense because larger differences (larger $\mu$'s) are easier to detect.
 
 ```{r}
 avg_mu_hat = 
@@ -87,13 +89,21 @@ ggplot(avg_mu_hat, aes(x = mu, y = avg_mu_hat)) +
   labs(color = "Samples where null was rejected")
 ```
 
-The sample average of $\hat{\mu}$ across tests for which the null is rejected (the red points),
-is not approximately equal for $\mu = {0, 1, 2, 3}$. We see that those values are just
-a bit above the true value (red points above black). This is because when we are selecting just
-the tests where the null is rejected, so we have values of $\hat{\mu}$ that are more extreme than
-the true value of $\mu$. Furthermore, we see that for larger values of $mu$, it's easier to 
-detect a difference of say 5 or 6, therefore, there's more power, and the sample averages of 
-$\hat{\mu}$ are approximately the true value. 
+When we plot the average estimate of $\hat{\mu}$ on the y axis and the true value of $\mu$
+on the x axis, we see that the values are nearly the exact same (x=y). 
+
+However, when we plot the average estimate of $\hat{mu}$ only in samples for which the 
+null is rejected (\textcolor{red}{red} points), we see that they are actually quite
+different for values of $\mu \leq 3$. When we select only the samples where the null 
+was rejected, we will deliberately be choosing values that are more extreme than the
+true value of $\mu$, so it makes sense that the average is not the same, particularly
+for smaller values of $\mu$. For $\mu = 1, 2, 3, 4$, we see that the average estimate is 
+in fact a bit higher than the true value. This is because the more extreme values of
+$x$ are what lead us to reject, so then the average estimate of them will be higher. 
+For $\mu = 5, 6$, we know that for larger effect sizes, it is easier to reject the null
+because the difference is more pronounced. The cutoff value for the sample means for rejection is not
+so extreme as it is for smaller true $\mu$, and so it is closer to the rue values, 
+and less biased. 
 
 ## Problem 3
 ```{r}
